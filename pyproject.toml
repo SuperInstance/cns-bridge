@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cns-bridge"
+version = "0.1.0"
+description = "Python library that lets any agent plug into the Hermes CNS bus via USCP."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "SuperInstance"}]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/SuperInstance/cns-bridge"
+Repository = "https://github.com/SuperInstance/cns-bridge"
+Issues = "https://github.com/SuperInstance/cns-bridge/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
