@@ -245,6 +245,14 @@ class EscalationEngine:
             # Invoke handler
             result = handler(query)
 
+            total_tokens += result.tokens_used
+
+            # Accept if confidence high enough and response non-None
+            accepted = (
+                result.confidence >= self.confidence_threshold
+                and result.response is not None
+            )
+
             # Record metrics
             with self._lock:
                 self._metrics[tier].total_tokens += result.tokens_used
@@ -252,16 +260,10 @@ class EscalationEngine:
                 self._metrics[tier].confidence_scores.append(
                     result.confidence
                 )
-                if i < len(tiers) - 1:
+                if not accepted:
                     self._metrics[tier].escalations_out += 1
 
-            total_tokens += result.tokens_used
-
-            # Accept if confidence high enough and response non-None
-            if (
-                result.confidence >= self.confidence_threshold
-                and result.response is not None
-            ):
+            if accepted:
                 outcome.response = result.response
                 outcome.confidence = result.confidence
                 outcome.resolved_by = tier
