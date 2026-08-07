@@ -228,6 +228,56 @@ poller = HeartbeatPoller(
 poller.start()
 ```
 
+### `CompactionGuardian`
+
+Tracks context-window pressure and decides when to capture important state
+before a context compaction event:
+
+```python
+from cns_bridge import CompactionGuardian
+
+guardian = CompactionGuardian()
+guardian.capture("decision", "Chose Redis over SQLite for speed")
+state = guardian.snapshot()
+```
+
+### `LedgerGraph`
+
+A decision-consequence graph for recording how earlier choices lead to later
+outcomes:
+
+```python
+from cns_bridge import LedgerGraph, DecisionNode, ConsequenceEdge
+
+graph = LedgerGraph()
+graph.add_node(DecisionNode(id="d1", summary="Shipped feature X"))
+```
+
+### `TokenEstimator`
+
+Estimate token counts for messages, assess context-window health, and decide
+when to trigger a creative break:
+
+```python
+from cns_bridge import estimate_tokens, context_health, should_trigger_creative_break
+
+tokens = estimate_tokens("Hello, world!")
+health = context_health(used=4000, limit=8000)
+should_break = should_trigger_creative_break(used=7500, limit=8000)
+```
+
+### `PersonalLog`
+
+File-based personal log for an agent to record thoughts, observations, and
+reflections:
+
+```python
+from cns_bridge import PersonalLog
+
+log = PersonalLog(path="/tmp/my_agent/log.jsonl")
+log.append("Learned something new today")
+```
+
 ## Examples
 
 - `examples/lucineer_agent.py` — Lucineer queries Hermes and receives a response.

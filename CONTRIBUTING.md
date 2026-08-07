@@ -34,7 +34,7 @@ pytest -v                    # verbose
 
 ## Code Style
 
-- Python 3.9+ with `from __future__ import annotations`
+- Python 3.10+ with `from __future__ import annotations`
 - Type hints on all public functions
 - Dataclasses for structured data (Header, Body, Signature)
 - Atomic file operations (tempfile → rename) for all writes
