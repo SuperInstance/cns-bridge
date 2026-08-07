@@ -270,3 +270,126 @@ class TestStatus:
         status = g.status()
         assert "deepseek" in status
         assert "GREEN" in status
+
+
+# ---------------------------------------------------------------------------
+# CaptureRecord.to_dict()
+# ---------------------------------------------------------------------------
+
+class TestCaptureRecordToDict:
+    def test_to_dict_contains_all_fields(self) -> None:
+        record = CaptureRecord(
+            path="/tmp/test.md",
+            insight_count=3,
+            metaphor_count=2,
+            word_count=500,
+        )
+        d = record.to_dict()
+        assert d["path"] == "/tmp/test.md"
+        assert d["insight_count"] == 3
+        assert d["metaphor_count"] == 2
+        assert d["word_count"] == 500
+        assert "timestamp" in d
+
+    def test_to_dict_timestamp_is_iso(self) -> None:
+        record = CaptureRecord(
+            path="/tmp/test.md",
+            insight_count=0,
+            metaphor_count=0,
+            word_count=0,
+        )
+        d = record.to_dict()
+        # ISO format should contain 'T' separator
+        assert "T" in d["timestamp"]
+
+
+# ---------------------------------------------------------------------------
+# _post_wiki()
+# ---------------------------------------------------------------------------
+
+class TestPostWiki:
+    def test_post_wiki_success(self, monkeypatch) -> None:
+        """_post_wiki should succeed when the server responds 200."""
+        import cns_bridge.compaction_guardian as cg
+
+        class FakeResponse:
+            def read(self):
+                return b"ok"
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                pass
+
+        captured = {}
+
+        def fake_urlopen(req, timeout=None):
+            captured["url"] = req.full_url
+            captured["data"] = req.data
+            captured["method"] = req.method
+            captured["timeout"] = timeout
+            return FakeResponse()
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        cg._post_wiki("https://wiki.example.com/api", {"title": "Test"})
+
+        assert captured["url"] == "https://wiki.example.com/api"
+        assert captured["method"] == "POST"
+        assert b'"title"' in captured["data"]
+        assert captured["timeout"] == 10
+
+    def test_post_wiki_swallows_errors(self, monkeypatch) -> None:
+        """_post_wiki should not raise when the server is unreachable."""
+        import cns_bridge.compaction_guardian as cg
+
+        def fake_urlopen(req, timeout=None):
+            raise ConnectionError("wiki is down")
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+
+        # Should not raise
+        cg._post_wiki("https://wiki.example.com/api", {"title": "Test"})
+
+    def test_generate_wiki_page_calls_post_wiki(self, monkeypatch) -> None:
+        """generate_wiki_page should call _post_wiki when wiki_api_url is provided."""
+        called = {"url": None, "payload": None}
+
+        import cns_bridge.compaction_guardian as cg
+
+        original_post = cg._post_wiki
+
+        def spy_post(url, payload):
+            called["url"] = url
+            called["payload"] = payload
+
+        monkeypatch.setattr(cg, "_post_wiki", spy_post)
+
+        g = CompactionGuardian()
+        g.generate_wiki_page(
+            title="Test",
+            summary="s",
+            content="c",
+            wiki_api_url="https://wiki.example.com/api",
+        )
+
+        assert called["url"] == "https://wiki.example.com/api"
+        assert called["payload"]["title"] == "Test"
+
+
+# ---------------------------------------------------------------------------
+# status() after history
+# ---------------------------------------------------------------------------
+
+class TestStatusWithHistory:
+    def test_status_after_yellow_check(self) -> None:
+        g = CompactionGuardian(context_limit=100_000, agent_name="hermes")
+        g.check(70_000)  # yellow
+        status = g.status()
+        assert "hermes" in status
+        assert "YELLOW" in status
+
+    def test_status_after_red_check(self) -> None:
+        g = CompactionGuardian(context_limit=100_000, agent_name="hermes")
+        g.check(95_000)  # red
+        status = g.status()
+        assert "hermes" in status
+        assert "RED" in status
