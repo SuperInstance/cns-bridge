@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .token_estimator import (
-    HealthLevel,
+
     context_health,
     context_pressure,
     estimate_messages,

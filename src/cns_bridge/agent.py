@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
 
 from .heartbeat import HeartbeatPoller, PacketHandler
 from .packet import Packet, PacketBuilder
-from .protocol import EscalationRule, Intent, Priority, ProtocolContext
+from .protocol import Intent, Priority, ProtocolContext
 from .transport import FileSystemTransport
 
 
