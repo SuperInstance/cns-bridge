@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from .heartbeat import HeartbeatPoller, PacketHandler
 from .packet import Packet, PacketBuilder
