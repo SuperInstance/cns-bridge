@@ -23,6 +23,7 @@ from cns_bridge.nmea_swmidi_bridge import (
     parse_hdt,
     _parse_lat_lon,
     _parse_nmea_checksum,
+    _safe_float,
     PITCH_GPS_POSITION,
     PITCH_GPS_SOG,
     PITCH_GPS_COG,
@@ -333,3 +334,232 @@ class TestIntegration:
         # Verify the binary round-trips
         packed = bridge.pack_events(events)
         assert len(packed) == 4 + len(events) * 8
+
+
+# ── NaN/Inf Safety Tests ────────────────────────────────────────────
+
+class TestSafeFloat:
+    """Test the _safe_float NaN/Inf firewall."""
+
+    def test_valid_number(self):
+        assert _safe_float("42.5") == 42.5
+
+    def test_integer_string(self):
+        assert _safe_float("100") == 100.0
+
+    def test_negative(self):
+        assert _safe_float("-13.9") == -13.9
+
+    def test_empty_string(self):
+        assert _safe_float("") is None
+
+    def test_whitespace_only(self):
+        assert _safe_float("   ") is None
+
+    def test_none_input(self):
+        assert _safe_float(None) is None
+
+    def test_garbage(self):
+        assert _safe_float("abc") is None
+
+    def test_nan_string(self):
+        assert _safe_float("nan") is None
+
+    def test_inf_string(self):
+        assert _safe_float("inf") is None
+
+    def test_neg_inf_string(self):
+        assert _safe_float("-inf") is None
+
+    def test_nan_float(self):
+        # If somehow a NaN float reaches here
+        assert _safe_float(float("nan")) is None
+
+    def test_inf_float(self):
+        assert _safe_float(float("inf")) is None
+
+    def test_with_default(self):
+        assert _safe_float("nan", default=0.0) == 0.0
+        assert _safe_float("", default=0.0) == 0.0
+        assert _safe_float("abc", default=-1.0) == -1.0
+
+    def test_zero_is_valid(self):
+        assert _safe_float("0") == 0.0
+        assert _safe_float("0.0") == 0.0
+        assert _safe_float("-0.0") == 0.0
+
+    def test_very_small(self):
+        assert _safe_float("0.0001") == 0.0001
+
+    def test_scientific_notation(self):
+        assert _safe_float("1e2") == 100.0
+
+
+class TestNmeaNaNSafety:
+    """Test that NaN/Inf in NMEA fields don't propagate."""
+
+    def test_dbt_nan_depth_meters(self):
+        """NaN in depth field should produce None, not NaN."""
+        fields = "nan,f,nan,M,7.6,F".split(",")
+        data = parse_dbt(fields)
+        assert data['depth_meters'] is None
+        assert data['depth_feet'] is None
+
+    def test_dbt_inf_depth(self):
+        """Inf in depth field should produce None."""
+        fields = "inf,f,inf,M,7.6,F".split(",")
+        data = parse_dbt(fields)
+        assert data['depth_meters'] is None
+
+    def test_dbt_partial_nan(self):
+        """NaN in one depth field shouldn't affect the other."""
+        fields = "45.7,f,nan,M,7.6,F".split(",")
+        data = parse_dbt(fields)
+        assert data['depth_feet'] == 45.7
+        assert data['depth_meters'] is None
+
+    def test_gga_nan_altitude(self):
+        """NaN in altitude should produce None."""
+        fields = "092204.999,5321.6802,N,00630.3371,W,1,04,2.0,nan,M,,,,".split(",")
+        data = parse_gga(fields)
+        assert data['altitude'] is None
+
+    def test_gga_inf_altitude(self):
+        """Inf in altitude should produce None."""
+        fields = "092204.999,5321.6802,N,00630.3371,W,1,04,2.0,inf,M,,,,".split(",")
+        data = parse_gga(fields)
+        assert data['altitude'] is None
+
+    def test_rmc_nan_sog(self):
+        """NaN in speed over ground should default to 0.0."""
+        fields = "083559.00,A,4717.11537,N,00833.91290,E,nan,57.0,250623,,,A".split(",")
+        data = parse_rmc(fields)
+        assert data['sog'] == 0.0
+        assert not (data['sog'] != data['sog'])  # not NaN
+
+    def test_rmc_nan_cog(self):
+        """NaN in course over ground should default to 0.0."""
+        fields = "083559.00,A,4717.11537,N,00833.91290,E,5.0,nan,250623,,,A".split(",")
+        data = parse_rmc(fields)
+        assert data['cog'] == 0.0
+
+    def test_rmc_inf_sog(self):
+        """Inf in speed over ground should default to 0.0."""
+        fields = "083559.00,A,4717.11537,N,00833.91290,E,inf,57.0,250623,,,A".split(",")
+        data = parse_rmc(fields)
+        assert data['sog'] == 0.0
+
+    def test_hdt_nan_heading(self):
+        """NaN in heading should produce None."""
+        fields = "nan,T".split(",")
+        data = parse_hdt(fields)
+        assert data['heading_true'] is None
+
+    def test_hdt_inf_heading(self):
+        """Inf in heading should produce None."""
+        fields = "inf,T".split(",")
+        data = parse_hdt(fields)
+        assert data['heading_true'] is None
+
+    def test_lat_lon_nan_minutes(self):
+        """NaN in lat/lon minutes should return None."""
+        # The value field has non-numeric minutes that would fail parsing
+        result = _parse_lat_lon("53xx.6802", "N")
+        assert result is None
+
+
+class TestBridgeNaNSafety:
+    """Test the full bridge handles NaN-corrupted NMEA gracefully."""
+
+    def test_bridge_nan_depth_produces_no_depth_event(self):
+        """A NaN depth sentence should not produce a depth event with NaN data."""
+        bridge = NmeaToSwmidi()
+        # Manually craft a sentence with nan depth
+        # parse_dbt returns None for nan, so _encode skips depth entirely
+        events = bridge.parse("$SDDBT,nan,f,nan,M,nan,F")
+        # Either no events, or events with safe values — never NaN propagation
+        for e in events:
+            # No event should carry NaN-derived data
+            assert 0 <= e.velocity <= 127
+            assert 0 <= e.error_mask <= 255
+
+    def test_bridge_nan_heading_produces_no_event(self):
+        """NaN heading should produce no heading event."""
+        bridge = NmeaToSwmidi()
+        events = bridge.parse("$HCHDT,nan,T")
+        # heading_true will be None, so _encode returns empty
+        assert len(events) == 0 or all(e.pitch != PITCH_HEADING_TRUE for e in events)
+
+    def test_bridge_inf_sog_clamped(self):
+        """Inf in SOG should not produce infinite velocity."""
+        bridge = NmeaToSwmidi()
+        # Without checksum, the sentence will parse
+        events = bridge.parse("$GPRMC,083559.00,A,4717.11,N,00833.91,E,inf,57.0,250623,,,A")
+        for e in events:
+            assert 0 <= e.velocity <= 127  # never exceeds MIDI range
+
+    def test_bridge_garbage_depth(self):
+        """Completely garbage depth data should not crash."""
+        bridge = NmeaToSwmidi()
+        events = bridge.parse("$SDDBT,garbage,f,@#$%,M,xyz,F")
+        # Should produce no depth event or safe events
+        for e in events:
+            assert 0 <= e.velocity <= 127
+
+    def test_bridge_all_nan_no_crash(self):
+        """A sentence where every numeric field is NaN should not crash."""
+        bridge = NmeaToSwmidi()
+        # This should just return empty or safe events
+        events = bridge.parse("$SDDBT,nan,f,nan,M,nan,F")
+        assert isinstance(events, list)
+
+    def test_no_nan_in_any_output(self):
+        """Parse various corrupt sentences and verify no NaN in any output field."""
+        bridge = NmeaToSwmidi()
+        corrupt_sentences = [
+            "$SDDBT,nan,f,nan,M,nan,F",
+            "$HCHDT,nan,T",
+            "$GPRMC,083559.00,A,4717.11,N,00833.91,E,nan,nan,250623,,,A",
+            "$GPGGA,092204.999,5321.6802,N,00630.3371,W,nan,nan,2.0,nan,M,,,",
+        ]
+        for sentence in corrupt_sentences:
+            events = bridge.parse(sentence)
+            for e in events:
+                # Pack and unpack to verify no corruption
+                packed = e.pack()
+                unpacked = SwmidiEvent.unpack(packed)
+                assert 0 <= unpacked.velocity <= 127
+                assert 0 <= unpacked.pitch <= 127
+                assert unpacked.tick >= 0
+
+
+class TestSafeFloatEdgeCases:
+    """Edge cases for _safe_float."""
+
+    def test_boolean_input(self):
+        # bool is a subclass of int in Python
+        assert _safe_float(True) == 1.0
+        assert _safe_float(False) == 0.0
+
+    def test_negative_default(self):
+        assert _safe_float("xyz", default=-99.0) == -99.0
+
+    def test_none_default(self):
+        assert _safe_float("xyz") is None
+        assert _safe_float("nan") is None
+
+    def test_very_large_number(self):
+        result = _safe_float("1e308")
+        assert result is not None
+        assert result > 0
+
+    def test_overflow_to_inf_filtered(self):
+        # float('1e309') overflows to inf in Python
+        result = _safe_float("1e309")
+        assert result is None  # inf filtered out
+
+    def test_underflow_to_zero(self):
+        # Very small but valid
+        result = _safe_float("1e-308")
+        assert result is not None
+        assert result >= 0

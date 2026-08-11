@@ -44,11 +44,45 @@ Usage:
 
 from __future__ import annotations
 
+import math
 import re
 import struct
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+
+
+# ── NaN/Inf Safety ───────────────────────────────────────────────────
+
+def _safe_float(value, default: float | None = None) -> float | None:
+    """
+    Parse a string to float, returning default for empty/invalid/NaN/Inf.
+
+    NMEA sentences from real marine sensors can be corrupted by electrical
+    noise, water ingress, or firmware bugs. A sentance field containing
+    'nan', 'inf', '-inf', or garbage will produce a Python float that is
+    NaN or Inf — which then propagates silently through every downstream
+    calculation (velocity scaling, depth warnings, position encoding).
+
+    This function is the firewall. Every float() call on NMEA field data
+    goes through here.
+    """
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        result = float(value)
+    elif isinstance(value, str):
+        if not value or not value.strip():
+            return default
+        try:
+            result = float(value)
+        except (ValueError, TypeError):
+            return default
+    else:
+        return default
+    if math.isnan(result) or math.isinf(result):
+        return default
+    return result
 
 
 # ── Pitch codes for NMEA event types ────────────────────────────────
@@ -167,7 +201,7 @@ def parse_gga(fields: list[str]) -> dict:
         'lon': _parse_lat_lon(fields[3], fields[4]) if len(fields) > 4 else None,
         'fix_quality': int(fields[5]) if len(fields) > 5 and fields[5] else 0,
         'satellites': int(fields[6]) if len(fields) > 6 and fields[6] else 0,
-        'altitude': float(fields[8]) if len(fields) > 8 and fields[8] else None,
+        'altitude': _safe_float(fields[8]) if len(fields) > 8 else None,
     }
     return result
 
@@ -184,8 +218,8 @@ def parse_rmc(fields: list[str]) -> dict:
         'status': fields[1] if len(fields) > 1 else '',
         'lat': _parse_lat_lon(fields[2], fields[3]) if len(fields) > 3 else None,
         'lon': _parse_lat_lon(fields[4], fields[5]) if len(fields) > 5 else None,
-        'sog': float(fields[6]) if len(fields) > 6 and fields[6] else 0.0,  # knots
-        'cog': float(fields[7]) if len(fields) > 7 and fields[7] else 0.0,  # degrees
+        'sog': _safe_float(fields[6], 0.0) if len(fields) > 6 else 0.0,  # knots
+        'cog': _safe_float(fields[7], 0.0) if len(fields) > 7 else 0.0,  # degrees
         'date': fields[8] if len(fields) > 8 else '',
     }
 
@@ -199,16 +233,10 @@ def parse_dbt(fields: list[str]) -> dict:
     """
     depth_m = None
     if len(fields) > 2 and fields[2]:
-        try:
-            depth_m = float(fields[2])
-        except ValueError:
-            pass
+        depth_m = _safe_float(fields[2])
     depth_ft = None
     if len(fields) > 0 and fields[0]:
-        try:
-            depth_ft = float(fields[0])
-        except ValueError:
-            pass
+        depth_ft = _safe_float(fields[0])
     return {
         'depth_meters': depth_m,
         'depth_feet': depth_ft,
@@ -224,10 +252,7 @@ def parse_hdt(fields: list[str]) -> dict:
     """
     heading = None
     if len(fields) > 0 and fields[0]:
-        try:
-            heading = float(fields[0])
-        except ValueError:
-            pass
+        heading = _safe_float(fields[0])
     return {'heading_true': heading}
 
 
@@ -239,14 +264,20 @@ def _parse_lat_lon(value: str, direction: str) -> Optional[float]:
         # Latitude: ddmm.mmmm, Longitude: dddmm.mmmm
         if direction in ('N', 'S'):
             deg = int(value[:2])
-            minutes = float(value[2:])
+            minutes = _safe_float(value[2:])
         else:  # E, W
             deg = int(value[:3])
-            minutes = float(value[3:])
+            minutes = _safe_float(value[3:])
+
+        if minutes is None:
+            return None
 
         decimal = deg + minutes / 60.0
         if direction in ('S', 'W'):
             decimal = -decimal
+        # Guard against NaN/Inf from corrupted data
+        if math.isnan(decimal) or math.isinf(decimal):
+            return None
         return round(decimal, 6)
     except (ValueError, IndexError):
         return None
@@ -412,9 +443,15 @@ class NmeaToSwmidi:
 
         elif 'sog' in data:
             # RMC: speed/course
-            sog = data.get('sog', 0)
-            cog = data.get('cog', 0)
+            sog = data.get('sog', 0) or 0.0  # safe default for NaN/None
+            cog = data.get('cog', 0) or 0.0
             status = data.get('status', '')
+
+            # Extra guard: if somehow NaN slipped through, replace with 0
+            if math.isnan(sog) or math.isinf(sog):
+                sog = 0.0
+            if math.isnan(cog) or math.isinf(cog):
+                cog = 0.0
 
             error_mask = 0
             if status == 'V':  # V = warning, data invalid
@@ -447,7 +484,7 @@ class NmeaToSwmidi:
         elif 'depth_meters' in data:
             # DBT: depth
             depth = data.get('depth_meters')
-            if depth is not None:
+            if depth is not None and not (math.isnan(depth) or math.isinf(depth)):
                 error_mask = 0
                 if depth < 0:
                     error_mask |= MASK_SEMANTIC  # negative depth = sensor error
