@@ -163,6 +163,14 @@ Everything is a packet. A heartbeat is a packet. An alert is a packet. A creativ
 
 No network calls. No socket servers. No connection pools. Just atomic file writes — `tempfile.mkstemp` → `os.replace`. This means the bus works across process boundaries, across WSL/Windows boundaries, across any filesystem that supports atomic rename. The [default paths](src/cns_bridge/transport.py) bridge Linux agents to Windows-side Hermes directories.
 
+### Delivery Semantics (read before relying on the poller)
+
+[HeartbeatPoller](src/cns_bridge/heartbeat.py) is **at-most-once per process**: a packet ID it has delivered is kept in an in-memory `_seen` set and never delivered again until the process restarts. The set has no TTL — restart the process to clear it. Duplicate files with the same `packet_id` (e.g. a retrying sender) are silently ignored.
+
+Handled packets are **deleted from the inbox before the callback runs**. If a callback raises, the poller does not crash and does not retry — but the packet is not lost either: it is written to the **dead letter directory** (default: `<outbox parent>/cns_dead_letter`, atomic write, preserved for manual inspection). Log the failure, fix the handler, and either replay the dead-lettered packet or have the sender resend. Handlers that need guaranteed delivery should implement their own retry, correlated via `correlation_id`.
+
+To redeliver packets that are still sitting in the inbox after fixing a handler, call `poller.reset_seen()` — it clears the dedup set. Pass `dead_letter_path=False` when constructing the poller to disable dead-lettering entirely (not recommended — packets would vanish silently).
+
 ### The Graph Never Forgets
 
 [LedgerGraph](src/cns_bridge/log_graph.py) records every agent decision as a node in a directed graph. Consequences flow along typed edges. You can trace any outcome back through its causal chain — from the build command KimiCode generated, through the plan GLM-5.2 synthesized, back to the request a human typed at 22:30 on a Sunday night. This is [how the fleet learns](https://github.com/SuperInstance/emergence-engine).
