@@ -192,3 +192,36 @@ class TestFormatHealth:
     def test_contains_remaining(self) -> None:
         result = format_health(30_000, 100_000)
         assert "70,000" in result
+
+class TestValidationConsistency:
+    """Every public health function must reject the same bad inputs.
+
+    Previously context_health raised on negative ``used`` while
+    context_pressure silently returned a negative fraction and
+    tokens_remaining returned a count larger than the window — a caller
+    switching between them would see contradictory behavior.
+    """
+
+    @pytest.mark.parametrize("bad_used", [-1, -10_000])
+    def test_negative_used_raises_everywhere(self, bad_used: int) -> None:
+        for call in (
+            lambda: context_health(bad_used, 100_000),
+            lambda: context_pressure(bad_used, 100_000),
+            lambda: tokens_remaining(bad_used, 100_000),
+            lambda: should_trigger_creative_break(bad_used, 100_000),
+            lambda: format_health(bad_used, 100_000),
+        ):
+            with pytest.raises(ValueError, match="used must be non-negative"):
+                call()
+
+    @pytest.mark.parametrize("bad_limit", [0, -100])
+    def test_bad_limit_raises_everywhere(self, bad_limit: int) -> None:
+        for call in (
+            lambda: context_health(10, bad_limit),
+            lambda: context_pressure(10, bad_limit),
+            lambda: tokens_remaining(10, bad_limit),
+            lambda: should_trigger_creative_break(10, bad_limit),
+            lambda: format_health(10, bad_limit),
+        ):
+            with pytest.raises(ValueError, match="limit must be positive"):
+                call()

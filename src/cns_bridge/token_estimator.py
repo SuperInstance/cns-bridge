@@ -154,10 +154,7 @@ def context_health(used: int, limit: int) -> str:
 
 
 def _context_health_level(used: int, limit: int) -> HealthLevel:
-    if limit <= 0:
-        raise ValueError("limit must be positive")
-    if used < 0:
-        raise ValueError("used must be non-negative")
+    _validate_usage(used, limit)
     ratio = used / limit
     if ratio >= 0.80:
         return HealthLevel.RED
@@ -166,15 +163,41 @@ def _context_health_level(used: int, limit: int) -> HealthLevel:
     return HealthLevel.GREEN
 
 
-def context_pressure(used: int, limit: int) -> float:
-    """Return the context-window utilisation as a fraction (0.0–1.0)."""
+def _validate_usage(used: int, limit: int) -> None:
+    """Reject nonsensical context-window inputs.
+
+    Every public health function must agree on what is invalid, or a caller
+    that switches between them (e.g. ``context_health`` for a label,
+    ``context_pressure`` for a fraction) will see one raise and the other
+    return garbage — a negative fraction, or a "remaining" count larger
+    than the window itself.
+
+    Raises
+    ------
+    ValueError
+        If *limit* is not positive or *used* is negative.
+    """
     if limit <= 0:
         raise ValueError("limit must be positive")
+    if used < 0:
+        raise ValueError("used must be non-negative")
+
+
+def context_pressure(used: int, limit: int) -> float:
+    """Return the context-window utilisation as a fraction (0.0–1.0).
+
+    Raises ValueError if *limit* is not positive or *used* is negative.
+    """
+    _validate_usage(used, limit)
     return min(used / limit, 1.0)
 
 
 def tokens_remaining(used: int, limit: int) -> int:
-    """Return how many tokens are left before the context window is full."""
+    """Return how many tokens are left before the context window is full.
+
+    Raises ValueError if *limit* is not positive or *used* is negative.
+    """
+    _validate_usage(used, limit)
     return max(limit - used, 0)
 
 
