@@ -24,6 +24,7 @@ Every agent in the fleet — from [Lucineer](https://github.com/SuperInstance/th
 | **[TokenEstimator](src/cns_bridge/token_estimator.py)** | Heuristic token counting, context-window health. | Metabolic monitor — tasting ATP, whispering *not long now.* |
 | **[PersonalLog](src/cns_bridge/personal_log.py)** | Fleet memory layer wrapping LedgerGraph. | Cerebrospinal fluid — carrying fleet secrets in a gentle tide. |
 | **[ProtocolContext](src/cns_bridge/protocol.py)** | Policy bundle: intents, priorities, escalation rules. | The neurotransmitter receptor — decides what counts as signal. |
+| **[NmeaToSwmidi](src/cns_bridge/nmea_swmidi_bridge.py)** | Bridges NMEA 0183 marine sensor sentences (GPS, depth, heading) into SWMIDI-8 events on the shared BeatClock. | The corpus callosum — the fiber tract that lets the body hear the fleet's song and the song feel the body's position. |
 
 ---
 

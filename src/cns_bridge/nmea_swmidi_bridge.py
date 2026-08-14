@@ -59,7 +59,7 @@ def _safe_float(value, default: float | None = None) -> float | None:
     Parse a string to float, returning default for empty/invalid/NaN/Inf.
 
     NMEA sentences from real marine sensors can be corrupted by electrical
-    noise, water ingress, or firmware bugs. A sentance field containing
+    noise, water ingress, or firmware bugs. A sentence field containing
     'nan', 'inf', '-inf', or garbage will produce a Python float that is
     NaN or Inf — which then propagates silently through every downstream
     calculation (velocity scaling, depth warnings, position encoding).

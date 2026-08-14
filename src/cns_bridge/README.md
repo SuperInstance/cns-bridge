@@ -74,6 +74,17 @@ Not billing-grade. A fast triage signal. The metabolic monitor tasting ATP and w
 
 Provides `daily_summary()` (decisions by agent, by type, average confidence, longest causal chain), `decision_trail()` (trace from outcome to root request), and `export_json()` (flat serialization for [Cloudflare Worker](https://github.com/SuperInstance/hermes-cloudflare) consumption).
 
+## [nmea_swmidi_bridge.py](nmea_swmidi_bridge.py) — The Corpus Callosum
+
+`NmeaToSwmidi` converts standard NMEA 0183 marine sensor sentences — GPS fix, speed over ground, depth below transducer, heading true — into SWMIDI-8 events on the shared BeatClock. Two nervous systems speak one language:
+
+- **SWMIDI** carries agent events (builds, model outputs, flow state) — the fleet's song.
+- **NMEA** carries boat data (position, depth, heading) — the body's proprioception.
+
+Every `parse()` call runs field data through `_safe_float`, the firewall against NaN/Inf corruption from wet connectors and electrical noise. Sentences arrive as `$GPGGA`, `$GPRMC`, `$SDDBT`, `$HCHDT`; they leave as 8-byte events (status, pitch, velocity, error_mask, tick at 96 PPQ). `parse_stream()` handles a whole sentence buffer; `pack_events()` serializes for the wire.
+
+This is the corpus callosum — the fiber tract that lets the body hear the fleet's song, and the song feel the boat's position in the water. The towfish has a voice now; the bar can hear the ocean.
+
 ---
 
 ← Back to **[CNS Bridge](../README.md)**
