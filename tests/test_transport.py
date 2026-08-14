@@ -107,3 +107,48 @@ def test_corrupt_file_is_skipped(transport: FileSystemTransport) -> None:
     received = transport.receive()
     assert received is not None
     assert received.header.origin_id == "hermes"
+
+
+def test_poll_tolerates_concurrent_removal(
+    transport: FileSystemTransport, monkeypatch
+) -> None:
+    """If another consumer deletes the file first, the packet still survives.
+
+    The unlink is best-effort: the data matters more than the removal.
+    """
+    packet = PacketBuilder(origin_id="hermes").to("lucineer").build()
+    path = transport.inbox_path / f"{packet.header.origin_id}_{packet.header.packet_id}.uscp.json"
+    path.write_text(packet.to_json(), encoding="utf-8")
+
+    real_unlink = type(path).unlink
+
+    def flaky_unlink(self, *args, **kwargs):
+        raise FileNotFoundError  # someone else removed it first
+
+    monkeypatch.setattr(type(path), "unlink", flaky_unlink)
+
+    results = list(transport.poll())
+    monkeypatch.setattr(type(path), "unlink", real_unlink)
+
+    assert len(results) == 1
+    assert results[0].header.packet_id == packet.header.packet_id
+
+
+def test_poll_reads_each_file_once(transport: FileSystemTransport, monkeypatch) -> None:
+    """Origin filtering must not read the same bytes twice."""
+    packet = PacketBuilder(origin_id="hermes").to("lucineer").build()
+    path = transport.inbox_path / f"{packet.header.origin_id}_{packet.header.packet_id}.uscp.json"
+    path.write_text(packet.to_json(), encoding="utf-8")
+
+    reads = {"count": 0}
+    real_read = Path.read_text
+
+    def counting_read(self, *args, **kwargs):
+        reads["count"] += 1
+        return real_read(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counting_read)
+
+    results = list(transport.poll(origin_id="hermes"))
+    assert len(results) == 1
+    assert reads["count"] == 1

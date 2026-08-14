@@ -107,11 +107,17 @@ class FileSystemTransport:
             return None
         return Packet.from_json(packet_path.read_text(encoding="utf-8"))
 
+    def _read_json(self, path: Path) -> dict | None:
+        """Parse a packet file, returning None for corrupt or unreadable files."""
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+
     def _next_inbox_file(self, origin_id: str | None) -> Path | None:
         for path in self._packet_files(self.inbox_path):
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
+            data = self._read_json(path)
+            if data is None:
                 # Skip corrupt or unreadable files.
                 continue
             if origin_id is None:
@@ -120,10 +126,22 @@ class FileSystemTransport:
                 return path
         return None
 
-    def _read_and_remove(self, path: Path) -> Packet:
-        text = path.read_text(encoding="utf-8")
+    def _read_and_remove(self, path: Path, text: str | None = None) -> Packet:
+        """Read a packet file and remove it from the inbox.
+
+        ``text`` may be passed in when the caller has already read the file
+        (e.g. to filter on origin), avoiding a second read of the same bytes.
+        Removal is best-effort: if another consumer removed the file first,
+        the packet is still returned — the data matters more than the
+        unlink.
+        """
+        if text is None:
+            text = path.read_text(encoding="utf-8")
         packet = Packet.from_json(text)
-        path.unlink()
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
         return packet
 
     def list_inbox(self) -> list[Path]:
@@ -133,14 +151,21 @@ class FileSystemTransport:
         return self._packet_files(self.outbox_path)
 
     def poll(self, origin_id: str | None = None) -> Iterable[Packet]:
-        """Yield every matching packet currently in the inbox, removing each."""
+        """Yield every matching packet currently in the inbox, removing each.
+
+        Each file is read and parsed at most once: the same bytes used to
+        check the origin filter are reused to build the packet. Corrupt
+        files are skipped and left in place.
+        """
         for path in list(self._packet_files(self.inbox_path)):
-            if origin_id is None:
-                yield self._read_and_remove(path)
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
                 continue
             try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-                if data.get("header", {}).get("origin_id") == origin_id:
-                    yield self._read_and_remove(path)
-            except (json.JSONDecodeError, OSError):
+                data = json.loads(text)
+            except json.JSONDecodeError:
                 continue
+            if origin_id is not None and data.get("header", {}).get("origin_id") != origin_id:
+                continue
+            yield self._read_and_remove(path, text=text)
