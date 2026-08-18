@@ -25,6 +25,7 @@ Every agent in the fleet — from [Lucineer](https://github.com/SuperInstance/th
 | **[PersonalLog](src/cns_bridge/personal_log.py)** | Fleet memory layer wrapping LedgerGraph. | Cerebrospinal fluid — carrying fleet secrets in a gentle tide. |
 | **[ProtocolContext](src/cns_bridge/protocol.py)** | Policy bundle: intents, priorities, escalation rules. | The neurotransmitter receptor — decides what counts as signal. |
 | **[NmeaToSwmidi](src/cns_bridge/nmea_swmidi_bridge.py)** | Bridges NMEA 0183 marine sensor sentences (GPS, depth, heading) into SWMIDI-8 events on the shared BeatClock. | The corpus callosum — the fiber tract that lets the body hear the fleet's song and the song feel the body's position. |
+| **[BusSpace](src/cns_bridge/bus_space.py)** | The bus itself, read as a room: packets → `Message`s, the fleet's conversation → a `RoomField`, the handshake → a temperature, the deadband → a ring up the chain. | The elephant's ear laid against the spine — it hears the fleet's temperature through the bus's own pulse. |
 
 ---
 
@@ -264,6 +265,49 @@ The [`inbox/`](inbox/) directory contains packets received from the fleet. The [
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Bus Space — the bus as a room the elephant reads
+
+CNS Bridge is the transport. But a transport has a *temperature* — a
+rhythm of ACKs and round-trips, a mood in the words every agent carries.
+[`BusSpace`](src/cns_bridge/bus_space.py) mates the actual bus to [the
+elephant's](https://github.com/SuperInstance/fleet-jepa-midi) space
+abstraction: every packet written to the bus (from Hermes, DeepSeek,
+Wesley, Lucineer) becomes a `Message`; the fleet's conversation becomes a
+`Room`; the elephant reads the `RoomField`; the deadband **rings when the
+bus's mood crosses a threshold** — a fleet-wide laugh or a fleet-wide
+panic, ringing up the chain. And because this is the *transport*, the
+handshake itself becomes a temperature: a bare ACK is a cold receipt,
+a `CALL_ACCEPTED` carrying cargo is a warmth surge.
+
+![Bus Space — a brass-and-wood telegraph room where every incoming message glows on a board, the board's overall glow shifting warm amber on a friendly exchange, one message glowing red where the mood crossed a threshold](assets/images/bus-space.png)
+
+```mermaid
+flowchart LR
+    P["bus packet<br/>any agent: Hermes, DeepSeek,<br/>Wesley, Lucineer"] -->|ingest| M["Message<br/>author = sender<br/>text = payload"]
+    M --> R["Room<br/>the fleet's conversation"]
+    R --> DB["DialBank<br/>9 JEPA dials"]
+    DB --> RF["RoomField<br/>warmth · κ · 9 dials"]
+    H["the handshake<br/>ACK receipt ↔ cargo"] --> T["a temperature<br/>of its own"]
+    RF --> DB2{"deadband<br/>mood crossed<br/>threshold?"}
+    DB2 -->|yes| RING["Ring up the chain<br/>laugh / panic → command"]
+    DB2 -->|no| QUIET["steady bus — stays quiet"]
+```
+
+```python
+from cns_bridge import BusSpace
+
+space = BusSpace("cns-bus")
+space.ingest(packet)            # any packet on the bus -> a Message
+field = space.read_field()      # DialBank -> RoomField (warmth, κ, 9 dials)
+ring  = space.deadband_check()  # a Ring when the bus's mood crosses
+hs    = space.handshake()       # the ACK/round-trip temperature, [-1, +1]
+```
+
+Watch the live bus: `python examples/bus_temperature.py --once`. Full
+writeup: [`docs/bus-space.md`](docs/bus-space.md).
 
 ---
 

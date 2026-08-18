@@ -1,6 +1,7 @@
 """CNS Bridge — plug any agent into the Hermes CNS bus via USCP."""
 
 from .agent import Agent
+from .bus_space import BusSpace, Ring
 from .compaction_guardian import (
     CaptureRecord,
     CompactionGuardian,
@@ -30,6 +31,7 @@ __version__ = "0.2.0"
 __all__ = [
     "Agent",
     "Body",
+    "BusSpace",
     "CaptureRecord",
     "CompactionGuardian",
     "CompactionState",
@@ -46,6 +48,7 @@ __all__ = [
     "PacketBuilder",
     "Priority",
     "ProtocolContext",
+    "Ring",
     "Signature",
     "TokenEstimate",
     "context_health",
