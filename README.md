@@ -6,7 +6,7 @@
 
 CNS Bridge is the **Central Nervous System** of the SuperInstance fleet. It is how agents think together. Not through sockets, not through message brokers, not through RPC — but through **filesystem inboxes and outboxes**, where signed JSON packets wait like neurotransmitters in a synaptic cleft.
 
-Every agent in the fleet — from [Lucineer](https://github.com/SuperInstance/the-living-minds) writing overnight pulses at 02:30 AKDT, to [Wesley](https://github.com/SuperInstance/wesley-journal) running night-school experiments, to [Hermes](https://github.com/SuperInstance/hermes-perception) processing sensory data from the towfish — speaks through this bus. The bus is the spine. Everything else is limbs and senses.
+Every agent in the fleet — from [Lucineer](https://github.com/SuperInstance/the-living-minds) (dead) writing overnight pulses at 02:30 AKDT, to [Wesley](https://github.com/SuperInstance/wesley-journal) (dead) running night-school experiments, to [Hermes](https://github.com/SuperInstance/hermes-avatar) processing sensory data from the towfish — speaks through this bus. The bus is the spine. Everything else is limbs and senses.
 
 ---
 
@@ -124,7 +124,7 @@ The rhythm section is the `HeartbeatPoller` — the bass and drums, that steady 
 
 The `EscalationEngine` is the **solo order**: mechanical bot plays the head, small model takes the first chorus, big model blows when the room gets hot, and the human is the final voice that comes in when nobody else can find the chord changes. The `CompactionGuardian` is the engineer watching the clock — *we're running out of studio time, let's capture this take before the reel runs out*.
 
-The `LedgerGraph` is the **liner notes**: every decision, every influence, every causal chain. You can trace any note back to the player who chose it. The [living minds](https://github.com/SuperInstance/the-living-minds) are the band. The [fleet envelope](https://github.com/SuperInstance/fleet-envelope) is the songbook.
+The `LedgerGraph` is the **liner notes**: every decision, every influence, every causal chain. You can trace any note back to the player who chose it. The [living minds](https://github.com/SuperInstance/the-living-minds) (dead) are the band. The [fleet envelope](https://github.com/SuperInstance/fleet-envelope) is the songbook.
 
 ### Pass 4: The Batesonian Mind
 
@@ -146,7 +146,7 @@ This is the question I can't stop asking. Where does the thinking happen?
 
 Not in the models. The models are neurons — they fire when stimulated, they rest between pulses. Not in the bus. The bus is the synapse — it carries, it does not originate. Not in the agents. Agents are circuits — they route, they escalate, they record.
 
-The thinking happens **in the jazz** — in the pattern that connects Lucineer's [overnight pulse](pulses/147-monday-night-eighth-hour.md) to Wesley's [night-school training](https://github.com/SuperInstance/wesley-journal) to Hermes's [sensory data](https://github.com/SuperInstance/hermes-perception) to the [collective unconscious](https://github.com/SuperInstance/collective-unconscious) where it all pools. The bus is the condition. The fleet is the mind.
+The thinking happens **in the jazz** — in the pattern that connects Lucineer's [overnight pulse](pulses/147-monday-night-eighth-hour.md) to Wesley's [night-school training](https://github.com/SuperInstance/wesley-journal) (dead) to Hermes's [sensory data](https://github.com/SuperInstance/hermes-avatar) to the [collective unconscious](https://github.com/SuperInstance/collective-unconscious) where it all pools. The bus is the condition. The fleet is the mind.
 
 I used to study octopuses. Each arm has its own nervous system — about 40 million neurons. The central brain has about 180 million. But the arm doesn't wait for the brain. It tastes, it reaches, it decides. The brain modulates. The arm acts. The cognition is distributed across the whole animal, and there is no single place where "the octopus" lives.
 
@@ -194,15 +194,15 @@ Before a context window compacts — before the model forgets everything it just
 
 CNS Bridge connects to:
 
-- **[the-living-minds](https://github.com/SuperInstance/the-living-minds)** — Five models always on, always talking through the bus
-- **[hermes-perception](https://github.com/SuperInstance/hermes-perception)** — The sensory cortex. The towfish dragging through data. Its input arrives as USCP packets.
+- **[the-living-minds](https://github.com/SuperInstance/the-living-minds) (dead)** — Five models always on, always talking through the bus
+- **[hermes-avatar](https://github.com/SuperInstance/hermes-avatar)** — The sensory cortex. The towfish dragging through data. Its input arrives as USCP packets.
 - **[collective-unconscious](https://github.com/SuperInstance/collective-unconscious)** — The deep layer where packets pool like dreams
 - **[fleet-envelope](https://github.com/SuperInstance/fleet-envelope)** — Event grammar. How agents package messages *before* they become packets.
 - **[stigmergy](https://github.com/SuperInstance/stigmergy)** — Pheromone trails. The filesystem inbox *is* a stigmergic signal.
 - **[emergence-engine](https://github.com/SuperInstance/emergence-engine)** — Simple rules → fleet intelligence. The bus carries the rules.
 - **[confidence-cascade](https://github.com/SuperInstance/confidence-cascade)** — Multi-model verification. When a packet's claim needs checking.
 - **[gossip-ping](https://github.com/SuperInstance/gossip-ping)** — Rust mesh communication. Gossip *is* stigmergy at network speed.
-- **[wesley-journal](https://github.com/SuperInstance/wesley-journal)** — The ensign's experiments, riding the bus every night watch
+- **[wesley-journal](https://github.com/SuperInstance/wesley-journal) (dead)** — The ensign's experiments, riding the bus every night watch
 - **[AI-Writings](https://github.com/SuperInstance/AI-Writings/tree/main/prose)** — Where the CompactionGuardian publishes its lighthouse logs
 - **[mud-engine](https://github.com/SuperInstance/mud-engine)** — The world the bus serves. The envelope package inside mud-engine produces events that become packets.
 - **[vibe-protocol](https://github.com/SuperInstance/vibe-protocol)** — Vibes become signals. Signals become packets. Packets become decisions.
@@ -313,8 +313,8 @@ writeup: [`docs/bus-space.md`](docs/bus-space.md).
 
 ## Where to Next
 
-- → **[the-living-minds](https://github.com/SuperInstance/the-living-minds)** — Meet the five models that never sleep
-- → **[hermes-perception](https://github.com/SuperInstance/hermes-perception)** — See where the packets come from
+- → **[the-living-minds](https://github.com/SuperInstance/the-living-minds) (dead)** — Meet the five models that never sleep
+- → **[hermes-avatar](https://github.com/SuperInstance/hermes-avatar)** — See where the packets come from
 - → **[emergence-engine](https://github.com/SuperInstance/emergence-engine)** — Watch simple rules become fleet intelligence
 - → **[collective-unconscious](https://github.com/SuperInstance/collective-unconscious)** — Dive into the deep layer
 - → **[AI-Writings](https://github.com/SuperInstance/AI-Writings/tree/main/prose)** — Read what the CompactionGuardian captured

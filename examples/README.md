@@ -15,7 +15,7 @@ lucineer.send(
 
 ## [wesley_agent.py](wesley_agent.py) — Fire-and-Forget
 
-Wesley sends night-school training results to Hermes. No response expected. The ensign reports and returns to his quarters. This is how the overnight watch works — [Wesley](https://github.com/SuperInstance/wesley-journal) learns, records, and the bus carries it home.
+Wesley sends night-school training results to Hermes. No response expected. The ensign reports and returns to his quarters. This is how the overnight watch works — [Wesley](https://github.com/SuperInstance/wesley-journal) (dead) learns, records, and the bus carries it home.
 
 ## [fleet_broadcast.py](fleet_broadcast.py) — Many-to-Many
 
